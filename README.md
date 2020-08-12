@@ -124,3 +124,34 @@ public class TestController {
 
 >6、响应视图和其他类型数据  
 zqMVC目前仅支持JSP视图，当Router中的方法返回类型是String类型时，zqMVC会把该值当作一个视图路径，该路径不能以“/”开头，且不能时是相对路径，zqMVC会自动给  返回的String加上“/”，该绝对路径的根目录是webapp目录（你的web项目的部署目录）。当Router中的方法返回类型不是String类型时，zqMVC会把返回值进行JSON字符串化并响应该字符串。
+
+<br/><br/>
+# 更新日志
+## 2020-08-12
+>支持URL的重定向  
+>>当Router方法的返回值是String且以“redirect:”开头时，zqMVC会将后面的字符串作为重定向到的URL，“redirect:”后面的字符串以“/”开头时，表示绝对路径，使用相对路径时不能以形如“./”或者“../”开头，只能是以非“/”开头的字符串。
+```
+	//示例
+	@Router
+	@URLMapping(value = "/test")
+	public class TestController {
+
+		@URLMapping("one")
+		public String test(){
+			return "index.jsp";
+		}
+
+		@URLMapping("two")
+		public User test2(HttpServletRequest request, HttpServletResponse response){
+			System.out.println(request.getParameter("zqMVC"));
+			return new User("zqMVC",21);
+		}
+
+		@URLMapping("three")
+		public String test3(){
+			return "redirect:/test/two";
+			//return "redirect:two";
+		}
+	}
+```
+当访问URL http://localhost:8080/zqMVC/test/three 后，以上两个return都将重定向到 http://localhost:8080/zqMVC/test/two 。

@@ -119,7 +119,14 @@ public class DispacherServlet extends HttpServlet {
                 }
                 Object result = method.invoke(uRlAndClassMethodMapper.getObject(),params);
                 if (result instanceof String)
-                    req.getRequestDispatcher("/"+(String) result).forward(req,resp);
+                    if (((String) result).startsWith("redirect:")) {
+                        result = ((String) result).replace("redirect:", "");
+                        if (((String) result).startsWith("/"))
+                            resp.sendRedirect(req.getContextPath()+(String) result);
+                        else
+                            resp.sendRedirect((String) result);
+                    }else
+                        req.getRequestDispatcher("/"+(String) result).forward(req,resp);
                 else {
                     resp.getWriter().write(JSONObject.toJSONString(result));
                 }

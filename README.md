@@ -4,14 +4,12 @@
 <br/><br/>
 # zqMVC可以干什么？
 >zqMVC可以摆脱开发传统JavaWeb应用编写大量Servlet的束缚。在传统JavaWeb应
-用开发中，一个Servlet只能处理一个URL的对应的请求，zqMVC不一样，它可以使用一个
-“Router”处理许多个不同的URL请求，而且这些处理的过程和逻辑，完全有开发者自己定
-义。
+用开发中，一个Servlet只能处理一个URL的对应的请求，zqMVC不一样，它可以使用一个“Router”处理许多个不同的URL请求，而且这些处理的过程和逻辑，完全有开发者自己定义。
 
 <br/><br/>
 # 如何使用zqMVC？
->1、首先在你的项目你需要导入zqMVC  
-
+>1、首先在你的项目你需要导入zqMVC的jar包，此外你还需要在你的项目中引入[fastjson](https://repo1.maven.org/maven2/com/alibaba/fastjson/1.2.73/fastjson-1.2.73.jar)  
+的jar包。
 >2、在web.xml中配置请求分发器DispacherServlet及其映射，拦截所有请求
 ```
 <servlet>

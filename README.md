@@ -9,15 +9,15 @@
 <br/><br/>
 # 如何使用zqMVC？
 >1、首先在你的项目你需要导入zqMVC的jar包，此外你还需要在你的项目中引入[fastjson](https://repo1.maven.org/maven2/com/alibaba/fastjson/1.2.73/fastjson-1.2.73.jar)  
-的jar包。
+的jar包。  
 >2、在web.xml中配置请求分发器DispacherServlet及其映射，拦截所有请求
 ```
 <servlet>
     <servlet-name>zqMvc</servlet-name>
     <servlet-class>zqmvc.servlets.DispacherServlet</servlet-class>
     <init-param>
-      <param-name>packageName</param-name>
-      <param-value>zq.controller</param-value>
+      <param-name>configuration</param-name>
+      <param-value>zqMVC.properties</param-value>
     </init-param>
   </servlet>
   <servlet-mapping>
@@ -25,25 +25,12 @@
     <url-pattern>/</url-pattern>
   </servlet-mapping>
 ```
+其中DispacherServlet的初始化参数configuration的值为一个properties的配置文件，该文件处于项目的resources目录下。  
+**你需要在配置文件中配置一个，以便zqMVC快速的扫描到你编写的的Router：RouterPackagetName=xxxx，该属性的值为router所在的包的包名**
 >3、处理静态资源  
-由于zqMVC目前还没有独自处理静态资源能力，因此可以借助Tomcat内置的defaultServlet处理静态资源，可以直接配置如下：
-```
-<servlet-mapping>
-    <servlet-name>default</servlet-name>
-    <url-pattern>*.css</url-pattern>
-  </servlet-mapping>
-  <servlet-mapping>
-    <servlet-name>default</servlet-name>
-    <url-pattern>*.js</url-pattern>
-  </servlet-mapping>
-  <servlet-mapping>
-    <servlet-name>default</servlet-name>
-    <url-pattern>*.jpg</url-pattern>
-  </servlet-mapping>
-```
-你可如同上述配置一样，自定义你需要放行的静态资源。例如“*.jpg”表示任意以“.jpg”为结尾的URL请求。
+zqMVC目前处理的静态资源是交由Tomcat内置的defaultServlet处理静态资源，目前支持处理以css、js、jpg、JPG、png、PNG、mp4为扩展名的资源文件。后续zqMVC将支持自定义静态资源类型和资源文件路径，敬请期待！
 
-**需要特别注意，defaultServlet的映射拦截配置必须配置在zqMVC的映射拦截之前，这样静态资源才能真正被defaultServlet拦截并处理**
+**如果zqMVC暂时还不能满足你的静态资源的类型，你可以自行在web.xml中配置资源类型并交由defaultServlet去处理**
 ```
 //完整配置如下：
 <!DOCTYPE web-app PUBLIC
@@ -62,30 +49,10 @@
     </init-param>
   </servlet>
 
-<!--  静态资源使用Tomcat默认的defaultServlet处理-->
+<!--  zqMVC暂时无法处理的静态资源类型，使用Tomcat默认的defaultServlet处理-->
   <servlet-mapping>
     <servlet-name>default</servlet-name>
-    <url-pattern>*.css</url-pattern>
-  </servlet-mapping>
-  <servlet-mapping>
-    <servlet-name>default</servlet-name>
-    <url-pattern>*.js</url-pattern>
-  </servlet-mapping>
-  <servlet-mapping>
-    <servlet-name>default</servlet-name>
-    <url-pattern>*.jpg</url-pattern>
-  </servlet-mapping>
-  <servlet-mapping>
-    <servlet-name>default</servlet-name>
-    <url-pattern>*.JPG</url-pattern>
-  </servlet-mapping>
-  <servlet-mapping>
-    <servlet-name>default</servlet-name>
-    <url-pattern>*.png</url-pattern>
-  </servlet-mapping>
-  <servlet-mapping>
-    <servlet-name>default</servlet-name>
-    <url-pattern>*.PNG</url-pattern>
+    <url-pattern>*.你的资源扩展名</url-pattern>
   </servlet-mapping>
 
   <servlet-mapping>
@@ -125,6 +92,9 @@ zqMVC目前仅支持JSP视图，当Router中的方法返回类型是String类型
 
 <br/><br/>
 # 更新日志
+## 2020-09-02  
+>1、解耦部分逻辑，可以使用配置文件来配置zqMVC啦！让你可以更加个性化的配置zqMVC，请查看使用文档的介绍。  
+>2、静态资源的处理不再是使用web.xml文件的相关配置进行处理，而是改为了由zqMVC来处理，目前支持处理以css、js、jpg、JPG、png、PNG、mp4为扩展名的资源文件。
 ## 2020-08-12
 >支持URL的重定向  
 >>当Router方法的返回值是String且以“redirect:”开头时，zqMVC会将后面的字符串作为重定向到的URL，“redirect:”后面的字符串以“/”开头时，表示绝对路径，使用相对路径时不能以形如“./”或者“../”开头，只能是以非“/”开头的字符串。

@@ -41,7 +41,7 @@ public class AnnotationScanner {
                 ;
         //System.out.println(path);
         scannerPath(new File(path));
-        System.out.println(classList);
+//        System.out.println(classList);
         return classList;
     }
 

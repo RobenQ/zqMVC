@@ -5,6 +5,7 @@ import com.alibaba.fastjson.JSONObject;
 import zqmvc.annotation.Router;
 import zqmvc.annotation.URLMapping;
 import zqmvc.utils.AnnotationScanner;
+import zqmvc.utils.ConfigurationReader;
 import zqmvc.utils.model.URlAndClassMethodMapper;
 
 import javax.servlet.ServletException;
@@ -18,10 +19,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * @author zhouqing
@@ -35,49 +33,19 @@ public class DispacherServlet extends HttpServlet {
     private String packageName =null;
     private List<String> controllerList = new ArrayList<>();
     private Map<String, URlAndClassMethodMapper> URLMapper = new HashMap<>();
+    private ConfigurationReader configuration;
 
     @Override
     public void init() {
-        this.packageName = this.getServletConfig().getInitParameter("packageName");
-        if (packageName==null)
-            try {
-                throw new Exception("get the InitParameter 'packageName' failed! Please config this InitParameter.");
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-        controllerList.addAll(AnnotationScanner.getScanner().scanner(packageName, Router.class));
-        for (String controller:
-             controllerList) {
-            try {
-                Class clazz = Class.forName(controller);
-                Object obj = clazz.newInstance();
-                URLMapping urlMapping = (URLMapping) clazz.getDeclaredAnnotation(URLMapping.class);
-                String baseURL;
-                if (urlMapping==null)
-                    baseURL = "";
-                else
-                    baseURL = urlMapping.value();
-
-                Method[] declaredMethods = obj.getClass().getDeclaredMethods();
-                for (Method m:
-                     declaredMethods) {
-                    String childURL = m.getAnnotation(URLMapping.class).value();
-                    URLMapper.put(baseURL+"/"+childURL,new URlAndClassMethodMapper(obj,m));
-                }
-            } catch (ClassNotFoundException e) {
-                e.printStackTrace();
-            } catch (InstantiationException e) {
-                e.printStackTrace();
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
-            }
-        }
+        configuration = ConfigurationReader.getInstance(this.getServletConfig());
+        initPackageName();
+        initControllerList();
+        initURLMaper();
         System.out.println("scanered URLMapping like following:");
         for (String key:
              URLMapper.keySet()) {
             URlAndClassMethodMapper uRlAndClassMethodMapper = URLMapper.get(key);
-            System.out.println(key+"====>>"+uRlAndClassMethodMapper.getObject().getClass().getSimpleName()+"===>>"
+            System.out.println(key+"===>"+uRlAndClassMethodMapper.getObject().getClass().getSimpleName()+"===>"
                     +uRlAndClassMethodMapper.getMethod().getName());
         }
     }
@@ -92,52 +60,63 @@ public class DispacherServlet extends HttpServlet {
         resp.setCharacterEncoding("UTF-8");
         resp.setContentType("text/html");
         String requestURI = req.getRequestURI().replace(req.getContextPath(),"");
-        URlAndClassMethodMapper uRlAndClassMethodMapper= URLMapper.get(requestURI);
-        if (uRlAndClassMethodMapper==null) {
-            resp.setStatus(404);
+        if (requestURI.endsWith(".css")||requestURI.endsWith(".js")||requestURI.endsWith(".jpg")
+                ||requestURI.endsWith(".JPG")||requestURI.endsWith(".png")||requestURI.endsWith(".PNG")
+                ||requestURI.endsWith(".mp4")||requestURI.endsWith(".html")){
             try {
-                resp.getWriter().write("你访问的页面不存在！");
+                this.getServletContext().getNamedDispatcher("default").forward(req,resp);
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
         else {
-            try {
-                Method method = uRlAndClassMethodMapper.getMethod();
-                Class<?>[] parameterTypes = method.getParameterTypes();
-                Object[] params = new Object[method.getParameterCount()];
-                int index = 0;
-                for (Class<?> clazz:
-                     parameterTypes) {
-                    if (clazz==HttpServletRequest.class)
-                        params[index] = req;
-                    else if (clazz==HttpServletResponse.class)
-                        params[index] = resp;
-                    else
-                        params[index] = null;
-                    index++;
+            URlAndClassMethodMapper uRlAndClassMethodMapper= URLMapper.get(requestURI);
+            if (uRlAndClassMethodMapper==null) {
+                resp.setStatus(404);
+                try {
+                    resp.getWriter().write("你访问的页面不存在！");
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-                Object result = method.invoke(uRlAndClassMethodMapper.getObject(),params);
-                if (result instanceof String)
-                    if (((String) result).startsWith("redirect:")) {
-                        result = ((String) result).replace("redirect:", "");
-                        if (((String) result).startsWith("/"))
-                            resp.sendRedirect(req.getContextPath()+(String) result);
+            }
+            else {
+                try {
+                    Method method = uRlAndClassMethodMapper.getMethod();
+                    Class<?>[] parameterTypes = method.getParameterTypes();
+                    Object[] params = new Object[method.getParameterCount()];
+                    int index = 0;
+                    for (Class<?> clazz:
+                            parameterTypes) {
+                        if (clazz==HttpServletRequest.class)
+                            params[index] = req;
+                        else if (clazz==HttpServletResponse.class)
+                            params[index] = resp;
                         else
-                            resp.sendRedirect((String) result);
-                    }else
-                        req.getRequestDispatcher("/"+(String) result).forward(req,resp);
-                else {
-                    resp.getWriter().write(JSONObject.toJSONString(result));
+                            params[index] = null;
+                        index++;
+                    }
+                    Object result = method.invoke(uRlAndClassMethodMapper.getObject(),params);
+                    if (result instanceof String)
+                        if (((String) result).startsWith("redirect:")) {
+                            result = ((String) result).replace("redirect:", "");
+                            if (((String) result).startsWith("/"))
+                                resp.sendRedirect(req.getContextPath()+(String) result);
+                            else
+                                resp.sendRedirect((String) result);
+                        }else
+                            req.getRequestDispatcher("/"+(String) result).forward(req,resp);
+                    else {
+                        resp.getWriter().write(JSONObject.toJSONString(result));
+                    }
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                } catch (InvocationTargetException e) {
+                    e.printStackTrace();
+                    System.out.println("please check parameters of the method '"+uRlAndClassMethodMapper.getObject().getClass().getSimpleName()+
+                            "."+uRlAndClassMethodMapper.getMethod().getName()+"' it can not include other type unless HttpServletRequest or HttpServletResponse");
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
-            } catch (InvocationTargetException e) {
-                e.printStackTrace();
-                System.out.println("please check parameters of the method '"+uRlAndClassMethodMapper.getObject().getClass().getSimpleName()+
-                        "."+uRlAndClassMethodMapper.getMethod().getName()+"' it can not include other type unless HttpServletRequest or HttpServletResponse");
-            } catch (IOException e) {
-                e.printStackTrace();
             }
         }
     }
@@ -145,5 +124,49 @@ public class DispacherServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException {
         doGet(req,resp);
+    }
+
+    private void initPackageName(){
+        this.packageName = configuration.getUSER_ROUTER_PACKAGENAME();
+        if (packageName==null)
+            try {
+                throw new Exception("get the Configuration Parameter 'packageName' failed!");
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+//        System.out.println("packageName:"+packageName);
+    }
+
+    private void initControllerList(){
+        controllerList.addAll(AnnotationScanner.getScanner().scanner(packageName, Router.class));
+    }
+
+    private void initURLMaper(){
+        for (String controller:
+                controllerList) {
+            try {
+                Class clazz = Class.forName(controller);
+                Object obj = clazz.newInstance();
+                URLMapping urlMapping = (URLMapping) clazz.getDeclaredAnnotation(URLMapping.class);
+                String baseURL;
+                if (urlMapping==null)
+                    baseURL = "";
+                else
+                    baseURL = urlMapping.value();
+
+                Method[] declaredMethods = obj.getClass().getDeclaredMethods();
+                for (Method m:
+                        declaredMethods) {
+                    String childURL = m.getAnnotation(URLMapping.class).value();
+                    URLMapper.put(baseURL+"/"+childURL,new URlAndClassMethodMapper(obj,m));
+                }
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            } catch (InstantiationException e) {
+                e.printStackTrace();
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }

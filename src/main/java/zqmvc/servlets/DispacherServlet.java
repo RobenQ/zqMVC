@@ -2,11 +2,15 @@ package zqmvc.servlets;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import org.thymeleaf.ITemplateEngine;
+import org.thymeleaf.context.WebContext;
 import zqmvc.annotation.Router;
 import zqmvc.annotation.URLMapping;
 import zqmvc.utils.AnnotationScanner;
 import zqmvc.utils.ConfigurationReader;
 import zqmvc.utils.model.URlAndClassMethodMapper;
+import zqmvc.utils.model.ViewConfiguration;
+import zqmvc.views.ThymeleafView;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -30,14 +34,18 @@ import java.util.*;
 
 public class DispacherServlet extends HttpServlet {
 
-    private String packageName =null;
-    private List<String> controllerList = new ArrayList<>();
-    private Map<String, URlAndClassMethodMapper> URLMapper = new HashMap<>();
+    private String packageName;
+    private List<String> controllerList;
+    private Map<String, URlAndClassMethodMapper> URLMapper;
     private ConfigurationReader configuration;
+    private ViewConfiguration viewConfiguration;
 
     @Override
     public void init() {
+        controllerList = new ArrayList<>();
+        URLMapper = new HashMap<>();
         configuration = ConfigurationReader.getInstance(this.getServletConfig());
+        viewConfiguration = ViewConfiguration.getInstance();
         initPackageName();
         initControllerList();
         initURLMaper();
@@ -62,7 +70,7 @@ public class DispacherServlet extends HttpServlet {
         String requestURI = req.getRequestURI().replace(req.getContextPath(),"");
         if (requestURI.endsWith(".css")||requestURI.endsWith(".js")||requestURI.endsWith(".jpg")
                 ||requestURI.endsWith(".JPG")||requestURI.endsWith(".png")||requestURI.endsWith(".PNG")
-                ||requestURI.endsWith(".mp4")||requestURI.endsWith(".html")){
+                ||requestURI.endsWith(".mp4")){
             try {
                 this.getServletContext().getNamedDispatcher("default").forward(req,resp);
             } catch (IOException e) {
@@ -96,6 +104,7 @@ public class DispacherServlet extends HttpServlet {
                         index++;
                     }
                     Object result = method.invoke(uRlAndClassMethodMapper.getObject(),params);
+                    //根据返回的数据类型进行不同的处理
                     if (result instanceof String)
                         if (((String) result).startsWith("redirect:")) {
                             result = ((String) result).replace("redirect:", "");
@@ -103,8 +112,17 @@ public class DispacherServlet extends HttpServlet {
                                 resp.sendRedirect(req.getContextPath()+(String) result);
                             else
                                 resp.sendRedirect((String) result);
-                        }else
-                            req.getRequestDispatcher("/"+(String) result).forward(req,resp);
+                        }else{
+                            //req.getRequestDispatcher("/"+(String) result).forward(req,resp);
+                            if (viewConfiguration.getViewType().equals("jsp"))
+                                req.getRequestDispatcher(viewConfiguration.getPrefix()+(String)result+
+                                    viewConfiguration.getSuffix()).forward(req,resp);
+//                                this.getServletContext().getNamedDispatcher("jsp").forward(req,resp);
+                            else if (viewConfiguration.getViewType().equals("thymeleaf")){
+                                ITemplateEngine templateEngine = ThymeleafView.getTemplateEngine(this.getServletContext());
+                                templateEngine.process((String) result,new WebContext(req,resp,this.getServletContext()),resp.getWriter());
+                            }
+                        }
                     else {
                         resp.getWriter().write(JSONObject.toJSONString(result));
                     }
@@ -112,8 +130,10 @@ public class DispacherServlet extends HttpServlet {
                     e.printStackTrace();
                 } catch (InvocationTargetException e) {
                     e.printStackTrace();
-                    System.out.println("please check parameters of the method '"+uRlAndClassMethodMapper.getObject().getClass().getSimpleName()+
-                            "."+uRlAndClassMethodMapper.getMethod().getName()+"' it can not include other type unless HttpServletRequest or HttpServletResponse");
+                    System.out.println("please check parameters of the method '"+uRlAndClassMethodMapper.getObject()
+                            .getClass().getSimpleName()+
+                            "."+uRlAndClassMethodMapper.getMethod().getName()+
+                            "' it can not include other type unless HttpServletRequest or HttpServletResponse");
                 } catch (IOException e) {
                     e.printStackTrace();
                 }

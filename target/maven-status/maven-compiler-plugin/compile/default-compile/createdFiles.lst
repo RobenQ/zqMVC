@@ -1,7 +1,9 @@
 zqmvc\annotation\URLMapping.class
 zqmvc\utils\AnnotationScanner.class
+zqmvc\views\ThymeleafView.class
 zqmvc\annotation\Router.class
 zqmvc\utils\handle\HandleMapping.class
 zqmvc\utils\ConfigurationReader.class
+zqmvc\utils\model\ViewConfiguration.class
 zqmvc\servlets\DispacherServlet.class
 zqmvc\utils\model\URlAndClassMethodMapper.class

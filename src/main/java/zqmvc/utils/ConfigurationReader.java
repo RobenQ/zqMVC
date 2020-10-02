@@ -42,13 +42,13 @@ public class ConfigurationReader {
 
     private String USER_VIEW_SUFFIX;
 
-    public synchronized static ConfigurationReader getInstance(ServletConfig sc) {
+    public static ConfigurationReader getInstance(ServletConfig sc) {
         return new ConfigurationReader(sc);
     }
     private ConfigurationReader(ServletConfig sc) {
         String userConfigurationFileName = sc.getInitParameter(CONFIGURATION_KEY);
 
-        if (userConfigurationFileName==null || userConfigurationFileName=="")
+        if (userConfigurationFileName==null || userConfigurationFileName.equals(""))
             USER_CONFIGURATION_FILENAME = DEFAULT_CONFIGURATION_FILENAME.replace(".properties","");
         else
             USER_CONFIGURATION_FILENAME = userConfigurationFileName.replace(".properties","");

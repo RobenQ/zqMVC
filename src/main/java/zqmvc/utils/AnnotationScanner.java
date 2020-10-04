@@ -29,6 +29,7 @@ public class AnnotationScanner {
 
     public List<String> scanner(String packageName, Class<? extends Annotation> needScannerAnnotation) {
         this.packageName = packageName;
+        classList.clear();
         packageName = packageName.replace(".", "/");
         return this.getClassList(packageName, needScannerAnnotation);
     }
@@ -40,25 +41,25 @@ public class AnnotationScanner {
                 //.substring(1)
                 ;
         //System.out.println(path);
-        scannerPath(new File(path));
+        scannerPath(new File(path),needScannerAnnotation);
 //        System.out.println(classList);
         return classList;
     }
 
-    private void scannerPath(File file){
+    private void scannerPath(File file,Class<? extends Annotation> needScannerAnnotation){
         if (file.isDirectory()){
             File[] files = file.listFiles();
             for (File f:
                  files) {
-                scannerPath(f);
+                scannerPath(f,needScannerAnnotation);
             }
         }else if (file.getName().endsWith(".class")){
             String className = packageName+"."+file.getName().replace(".class","");
             try {
-                if (Class.forName(className).getDeclaredAnnotation(Router.class)!=null)
+                if (Class.forName(className).getDeclaredAnnotation(needScannerAnnotation)!=null)
                     classList.add(packageName+"."+file.getName().replace(".class",""));
             } catch (ClassNotFoundException e) {
-                System.out.println("load the Router failed!");
+                System.out.println("load the component failed!");
                 e.printStackTrace();
             }
         }

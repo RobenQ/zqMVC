@@ -5,6 +5,8 @@ import com.alibaba.fastjson.JSONObject;
 import org.thymeleaf.ITemplateEngine;
 import org.thymeleaf.context.WebContext;
 import zqmvc.annotation.Router;
+import zqmvc.annotation.Scheduled;
+import zqmvc.annotation.Task;
 import zqmvc.annotation.URLMapping;
 import zqmvc.utils.AnnotationScanner;
 import zqmvc.utils.ConfigurationReader;
@@ -24,6 +26,10 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.*;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author zhouqing
@@ -39,6 +45,8 @@ public class DispacherServlet extends HttpServlet {
     private Map<String, URlAndClassMethodMapper> URLMapper;
     private ConfigurationReader configuration;
     private ViewConfiguration viewConfiguration;
+    private Map<Method,Object> taskMap;
+    private ScheduledExecutorService executor;
 
     @Override
     public void init() {
@@ -46,6 +54,7 @@ public class DispacherServlet extends HttpServlet {
         URLMapper = new HashMap<>();
         configuration = ConfigurationReader.getInstance(this.getServletConfig());
         viewConfiguration = ViewConfiguration.getInstance();
+        taskMap = new HashMap<>();
         initPackageName();
         initControllerList();
         initURLMaper();
@@ -55,6 +64,11 @@ public class DispacherServlet extends HttpServlet {
             URlAndClassMethodMapper uRlAndClassMethodMapper = URLMapper.get(key);
             System.out.println(key+"===>"+uRlAndClassMethodMapper.getObject().getClass().getSimpleName()+"===>"
                     +uRlAndClassMethodMapper.getMethod().getName());
+        }
+        executor = Executors.newScheduledThreadPool(5);
+        if (configuration.isUSER_ENABLE_TASK()){
+            initTaskList();
+            initAndStartTask();
         }
     }
 
@@ -146,6 +160,12 @@ public class DispacherServlet extends HttpServlet {
         doGet(req,resp);
     }
 
+    @Override
+    public void destroy() {
+        super.destroy();
+        executor.shutdown();
+    }
+
     private void initPackageName(){
         this.packageName = configuration.getUSER_ROUTER_PACKAGENAME();
         if (packageName==null)
@@ -187,6 +207,45 @@ public class DispacherServlet extends HttpServlet {
             } catch (IllegalAccessException e) {
                 e.printStackTrace();
             }
+        }
+    }
+
+    private void initTaskList(){
+        List<String> klass = AnnotationScanner.getScanner().scanner(configuration.getUSER_TASK_PACKAGE(), Task.class);
+        for (String s:klass) {
+//            System.out.println(s);
+            try {
+                Object o = Class.forName(s).newInstance();
+//                System.out.println(s);
+                Method[] mets = o.getClass().getDeclaredMethods();
+                for (Method met:mets) {
+//                    System.out.println(met.getName());
+                    if (met.getAnnotation(Scheduled.class)!=null){
+                        taskMap.put(met,o);
+                        System.out.println(met.getName());
+                    }
+                }
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            } catch (InstantiationException e) {
+                e.printStackTrace();
+            }
+
+        }
+//        System.out.println(taskMap.toString());
+    }
+
+    public void initAndStartTask(){
+        for (Method m:taskMap.keySet()) {
+            executor.scheduleAtFixedRate(()->{
+                try {
+                    m.invoke(taskMap.get(m));
+                } catch (IllegalAccessException | InvocationTargetException e) {
+                    e.printStackTrace();
+                }
+            },5,m.getAnnotation(Scheduled.class).fixRate(), TimeUnit.MILLISECONDS);
         }
     }
 }

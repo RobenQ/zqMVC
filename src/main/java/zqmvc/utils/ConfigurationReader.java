@@ -42,6 +42,20 @@ public class ConfigurationReader {
 
     private String USER_VIEW_SUFFIX;
 
+    /*
+    ============================================================
+    定时任务相关配置
+     */
+
+    //todo:是否启用定时任务功能，enableTask为true时启用。
+    private final String ENABLE_TASK_KEY = "enableTask";
+    private final boolean ENABLE_TASK = false;
+    private boolean USER_ENABLE_TASK;
+
+    private final String TASK_PACKAGE_KEY = "taskPackage";
+    private final String TASK_PACKAGE = "";
+    private String USER_TASK_PACKAGE;
+
     public static ConfigurationReader getInstance(ServletConfig sc) {
         return new ConfigurationReader(sc);
     }
@@ -95,6 +109,22 @@ public class ConfigurationReader {
         ViewConfiguration.getInstance().setPrefix(USER_VIEW_PREFIX);
         ViewConfiguration.getInstance().setSuffix(USER_VIEW_SUFFIX);
 
+        try {
+            if ((USER_ENABLE_TASK= Boolean.parseBoolean(configuration.getString(ENABLE_TASK_KEY)))==false)
+                USER_ENABLE_TASK = ENABLE_TASK;
+        } catch (Exception e) {
+            USER_ENABLE_TASK = ENABLE_TASK;
+            //e.printStackTrace();
+        }
+
+        try {
+            if ((USER_TASK_PACKAGE= configuration.getString(TASK_PACKAGE_KEY))==null)
+                USER_TASK_PACKAGE = TASK_PACKAGE;
+        } catch (Exception e) {
+            USER_TASK_PACKAGE = TASK_PACKAGE;
+            //e.printStackTrace();
+        }
+
 //        printConfiguration();
     }
 
@@ -108,4 +138,11 @@ public class ConfigurationReader {
         return USER_ROUTER_PACKAGENAME;
     }
 
+    public boolean isUSER_ENABLE_TASK() {
+        return USER_ENABLE_TASK;
+    }
+
+    public String getUSER_TASK_PACKAGE() {
+        return USER_TASK_PACKAGE;
+    }
 }
